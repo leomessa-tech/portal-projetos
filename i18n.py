@@ -176,9 +176,8 @@ TRANSLATIONS = {
         "status_prazo_atrasado": "Atrasado",
         "status_prazo_concluido": "Concluído",
         
-        # Autenticação e Usuários
         "login_screen_title": "🔐 Acesso ao Portal de Projetos",
-        "login_screen_subtitle": "Entre com suas credenciais ou cadastre um novo usuário para acessar o painel.",
+        "login_screen_subtitle": "Entre com suas credenciais para acessar o painel de projetos.",
         "tab_login": "🔑 Entrar",
         "tab_register": "👤 Cadastrar Novo Usuário",
         "lbl_usuario": "Nome de Usuário (Login)",
@@ -190,10 +189,25 @@ TRANSLATIONS = {
         "btn_registrar_usuario": "Cadastrar Usuário",
         "err_login_invalido": "Usuário ou senha inválidos.",
         "err_senhas_diferentes": "As senhas informadas não coincidem.",
-        "success_usuario_criado": "Usuário cadastrado com sucesso! Agora você já pode fazer login.",
+        "success_usuario_criado": "Usuário cadastrado com sucesso!",
         "btn_logout": "🚪 Sair (Logout)",
         "logged_as": "Logado como:",
-        "default_admin_hint": "💡 Acesso padrão inicial: Usuário **admin** | Senha **admin123**"
+        "btn_adicionar_usuario": "➕ Novo Usuário",
+        "btn_gerenciar_usuarios": "👥 Gestão de Usuários",
+        "user_mgmt_title": "👥 Gestão de Usuários",
+        "user_mgmt_subtitle": "Visualize, ative/inative ou exclua usuários cadastrados no portal.",
+        "user_status_active": "Ativo",
+        "user_status_inactive": "Inativo",
+        "btn_deactivate": "⏸️ Inativar",
+        "btn_activate": "▶️ Ativar",
+        "btn_delete_user": "🗑️ Excluir",
+        "delete_user_confirm": "Tem certeza que deseja excluir o usuário '{user}'?",
+        "err_cannot_delete_self": "Você não pode excluir o próprio usuário logado.",
+        "err_cannot_deactivate_self": "Você não pode inativar o próprio usuário logado.",
+        "err_usuario_inativo": "Esta conta de usuário está inativa. Contate o administrador.",
+        "success_user_deleted": "Usuário excluído com sucesso.",
+        "success_user_status": "Status do usuário atualizado com sucesso.",
+        "is_admin_label": "Perfil Administrador"
     },
     
     "en_US": {
@@ -365,9 +379,8 @@ TRANSLATIONS = {
         "status_prazo_atrasado": "Overdue",
         "status_prazo_concluido": "Completed",
         
-        # Authentication & Users
         "login_screen_title": "🔐 Project Portal Access",
-        "login_screen_subtitle": "Sign in with your credentials or create a new user to access the dashboard.",
+        "login_screen_subtitle": "Sign in with your credentials to access the project dashboard.",
         "tab_login": "🔑 Sign In",
         "tab_register": "👤 Register New User",
         "lbl_usuario": "Username (Login)",
@@ -379,10 +392,25 @@ TRANSLATIONS = {
         "btn_registrar_usuario": "Register User",
         "err_login_invalido": "Invalid username or password.",
         "err_senhas_diferentes": "Passwords do not match.",
-        "success_usuario_criado": "User registered successfully! You may now sign in.",
+        "success_usuario_criado": "User registered successfully!",
         "btn_logout": "🚪 Sign Out",
         "logged_as": "Signed in as:",
-        "default_admin_hint": "💡 Default initial credentials: Username **admin** | Password **admin123**"
+        "btn_adicionar_usuario": "➕ New User",
+        "btn_gerenciar_usuarios": "👥 User Management",
+        "user_mgmt_title": "👥 System User Management",
+        "user_mgmt_subtitle": "View, activate/deactivate, or delete portal users.",
+        "user_status_active": "Active",
+        "user_status_inactive": "Inactive",
+        "btn_deactivate": "⏸️ Deactivate",
+        "btn_activate": "▶️ Activate",
+        "btn_delete_user": "🗑️ Delete",
+        "delete_user_confirm": "Are you sure you want to delete user '{user}'?",
+        "err_cannot_delete_self": "You cannot delete your own logged-in account.",
+        "err_cannot_deactivate_self": "You cannot deactivate your own logged-in account.",
+        "err_usuario_inativo": "This user account is inactive. Please contact the administrator.",
+        "success_user_deleted": "User deleted successfully.",
+        "success_user_status": "User status updated successfully.",
+        "is_admin_label": "Administrator Role"
     },
     
     "es_ES": {
@@ -554,9 +582,8 @@ TRANSLATIONS = {
         "status_prazo_atrasado": "Atrasado",
         "status_prazo_concluido": "Concluido",
         
-        # Autenticación y Usuarios
         "login_screen_title": "🔐 Acceso al Portal de Proyectos",
-        "login_screen_subtitle": "Inicie sesión con sus credenciales o registre un nuevo usuario para acceder al panel.",
+        "login_screen_subtitle": "Inicie sesión con sus credenciales para acceder al panel de proyectos.",
         "tab_login": "🔑 Iniciar Sesión",
         "tab_register": "👤 Registrar Nuevo Usuario",
         "lbl_usuario": "Nombre de Usuario (Login)",
@@ -568,10 +595,25 @@ TRANSLATIONS = {
         "btn_registrar_usuario": "Registrar Usuario",
         "err_login_invalido": "Usuario o contraseña inválidos.",
         "err_senhas_diferentes": "Las contraseñas no coinciden.",
-        "success_usuario_criado": "¡Usuario registrado con éxito! Ya puede iniciar sesión.",
+        "success_usuario_criado": "¡Usuario registrado con éxito!",
         "btn_logout": "🚪 Cerrar Sesión",
         "logged_as": "Conectado como:",
-        "default_admin_hint": "💡 Acceso inicial por defecto: Usuario **admin** | Contraseña **admin123**"
+        "btn_adicionar_usuario": "➕ Nuevo Usuario",
+        "btn_gerenciar_usuarios": "👥 Gestión de Usuarios",
+        "user_mgmt_title": "👥 Gestión de Usuarios del Sistema",
+        "user_mgmt_subtitle": "Visualice, active/inactive o elimine usuarios del portal.",
+        "user_status_active": "Activo",
+        "user_status_inactive": "Inactivo",
+        "btn_deactivate": "⏸️ Inactivar",
+        "btn_activate": "▶️ Activar",
+        "btn_delete_user": "🗑️ Eliminar",
+        "delete_user_confirm": "¿Está seguro de eliminar al usuario '{user}'?",
+        "err_cannot_delete_self": "No puede eliminar su propia cuenta activa.",
+        "err_cannot_deactivate_self": "No puede inactivar su propia cuenta activa.",
+        "err_usuario_inativo": "Esta cuenta de usuario está inactiva. Contacte al administrador.",
+        "success_user_deleted": "Usuario eliminado con éxito.",
+        "success_user_status": "Estado del usuario actualizado con éxito.",
+        "is_admin_label": "Perfil Administrador"
     },
     
     "fr_FR": {
@@ -743,9 +785,8 @@ TRANSLATIONS = {
         "status_prazo_atrasado": "En Retard",
         "status_prazo_concluido": "Terminé",
         
-        # Authentification et Utilisateurs
         "login_screen_title": "🔐 Accès au Portail de Projets",
-        "login_screen_subtitle": "Connectez-vous avec vos identifiants ou créez un nouvel utilisateur pour accéder au tableau de bord.",
+        "login_screen_subtitle": "Connectez-vous avec vos identifiants pour accéder au tableau de bord.",
         "tab_login": "🔑 Connexion",
         "tab_register": "👤 Nouvel Utilisateur",
         "lbl_usuario": "Nom d'Utilisateur (Identifiant)",
@@ -757,10 +798,25 @@ TRANSLATIONS = {
         "btn_registrar_usuario": "Enregistrer l'Utilisateur",
         "err_login_invalido": "Nom d'utilisateur ou mot de passe invalide.",
         "err_senhas_diferentes": "Les mots de passe ne correspondent pas.",
-        "success_usuario_criado": "Utilisateur créé avec succès ! Vous pouvez maintenant vous connecter.",
+        "success_usuario_criado": "Utilisateur créé avec succès !",
         "btn_logout": "🚪 Déconnexion",
         "logged_as": "Connecté en tant que :",
-        "default_admin_hint": "💡 Accès initial par défaut : Utilisateur **admin** | Mot de passe **admin123**"
+        "btn_adicionar_usuario": "➕ Nouvel Utilisateur",
+        "btn_gerenciar_usuarios": "👥 Gestion Utilisateurs",
+        "user_mgmt_title": "👥 Gestion des Utilisateurs du Système",
+        "user_mgmt_subtitle": "Visualisez, activez/désactivez ou supprimez des utilisateurs du portail.",
+        "user_status_active": "Actif",
+        "user_status_inactive": "Inactif",
+        "btn_deactivate": "⏸️ Désactiver",
+        "btn_activate": "▶️ Activer",
+        "btn_delete_user": "🗑️ Supprimer",
+        "delete_user_confirm": "Êtes-vous sûr de vouloir supprimer l'utilisateur '{user}' ?",
+        "err_cannot_delete_self": "Vous ne pouvez pas supprimer votre propre compte connecté.",
+        "err_cannot_deactivate_self": "Vous ne pouvez pas désactiver votre propre compte connecté.",
+        "err_usuario_inativo": "Ce compte utilisateur est inactif. Veuillez contacter l'administrateur.",
+        "success_user_deleted": "Utilisateur supprimé avec succès.",
+        "success_user_status": "Statut de l'utilisateur mis à jour avec succès.",
+        "is_admin_label": "Profil Administrateur"
     }
 }
 

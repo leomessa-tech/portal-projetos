@@ -100,45 +100,22 @@ if not st.session_state.get("autenticado", False):
         st.markdown(f"## {_t('login_screen_title')}")
         st.write(_t("login_screen_subtitle"))
 
-        tab_login_tab, tab_register_tab = st.tabs([_t("tab_login"), _t("tab_register")])
+        with st.form("form_login"):
+            login_user = st.text_input(_t("lbl_usuario"))
+            login_pass = st.text_input(_t("lbl_senha"), type="password")
+            btn_entrar = st.form_submit_button(_t("btn_acessar"), type="primary", use_container_width=True)
 
-        with tab_login_tab:
-            with st.form("form_login"):
-                login_user = st.text_input(_t("lbl_usuario"))
-                login_pass = st.text_input(_t("lbl_senha"), type="password")
-                btn_entrar = st.form_submit_button(_t("btn_acessar"), type="primary", use_container_width=True)
-
-                if btn_entrar:
-                    usuario = database.autenticar_usuario(login_user, login_pass)
-                    if usuario:
+            if btn_entrar:
+                usuario = database.autenticar_usuario(login_user, login_pass)
+                if usuario:
+                    if usuario.get("inativo"):
+                        st.error(_t("err_usuario_inativo"))
+                    else:
                         st.session_state["autenticado"] = True
                         st.session_state["usuario_atual"] = usuario
                         st.rerun()
-                    else:
-                        st.error(_t("err_login_invalido"))
-
-            st.caption(_t("default_admin_hint"))
-
-        with tab_register_tab:
-            with st.form("form_register"):
-                cad_user = st.text_input(_t("lbl_usuario"))
-                cad_nome = st.text_input(_t("lbl_nome_completo"))
-                cad_email = st.text_input(_t("lbl_email"))
-                cad_pass1 = st.text_input(_t("lbl_senha"), type="password")
-                cad_pass2 = st.text_input(_t("lbl_confirma_senha"), type="password")
-                btn_cad = st.form_submit_button(_t("btn_registrar_usuario"), type="primary", use_container_width=True)
-
-                if btn_cad:
-                    if not cad_user or not cad_nome or not cad_pass1:
-                        st.error(_t("err_required"))
-                    elif cad_pass1 != cad_pass2:
-                        st.error(_t("err_senhas_diferentes"))
-                    else:
-                        ok, msg = database.criar_usuario(cad_user, cad_nome, cad_email, cad_pass1)
-                        if ok:
-                            st.success(_t("success_usuario_criado"))
-                        else:
-                            st.error(msg)
+                else:
+                    st.error(_t("err_login_invalido"))
 
     st.stop()
 
@@ -154,31 +131,10 @@ with st.sidebar:
     usuario_atual = st.session_state.get("usuario_atual", {})
     st.markdown(f"👤 {_t('logged_as')} **{usuario_atual.get('nome', '')}** (`@{usuario_atual.get('username', '')}`)")
     
-    col_out, col_add_user = st.columns(2)
-    with col_out:
-        if st.button(_t("btn_logout"), use_container_width=True):
-            st.session_state["autenticado"] = False
-            st.session_state["usuario_atual"] = None
-            st.rerun()
-    with col_add_user:
-        with st.popover(f"➕ {_t('tab_register')}", use_container_width=True):
-            st.write(f"**{_t('tab_register')}**")
-            p_cad_user = st.text_input(_t("lbl_usuario"), key="sb_cad_user")
-            p_cad_nome = st.text_input(_t("lbl_nome_completo"), key="sb_cad_nome")
-            p_cad_email = st.text_input(_t("lbl_email"), key="sb_cad_email")
-            p_cad_pass1 = st.text_input(_t("lbl_senha"), type="password", key="sb_cad_pass1")
-            p_cad_pass2 = st.text_input(_t("lbl_confirma_senha"), type="password", key="sb_cad_pass2")
-            if st.button(_t("btn_registrar_usuario"), key="sb_btn_reg", type="primary"):
-                if not p_cad_user or not p_cad_nome or not p_cad_pass1:
-                    st.error(_t("err_required"))
-                elif p_cad_pass1 != p_cad_pass2:
-                    st.error(_t("err_senhas_diferentes"))
-                else:
-                    ok, msg = database.criar_usuario(p_cad_user, p_cad_nome, p_cad_email, p_cad_pass1)
-                    if ok:
-                        st.success(_t("success_usuario_criado"))
-                    else:
-                        st.error(msg)
+    if st.button(_t("btn_logout"), use_container_width=True):
+        st.session_state["autenticado"] = False
+        st.session_state["usuario_atual"] = None
+        st.rerun()
 
     st.markdown("---")
 
@@ -194,6 +150,106 @@ with st.sidebar:
         st.session_state["idioma"] = idioma_selecionado
         database.salvar_configuracao("idioma_padrao", idioma_selecionado)
         st.rerun()
+
+    # Gestão de Usuários (próximo ao de alterar idiomas)
+    col_u_add, col_u_list = st.columns(2)
+    with col_u_add:
+        with st.popover(_t("btn_adicionar_usuario"), use_container_width=True):
+            st.markdown(f"#### {_t('btn_adicionar_usuario')}")
+            p_cad_user = st.text_input(_t("lbl_usuario"), key="sb_cad_user")
+            p_cad_nome = st.text_input(_t("lbl_nome_completo"), key="sb_cad_nome")
+            p_cad_email = st.text_input(_t("lbl_email"), key="sb_cad_email")
+            p_cad_pass1 = st.text_input(_t("lbl_senha"), type="password", key="sb_cad_pass1")
+            p_cad_pass2 = st.text_input(_t("lbl_confirma_senha"), type="password", key="sb_cad_pass2")
+            p_cad_admin = st.checkbox(_t("is_admin_label"), key="sb_cad_admin")
+            
+            if st.button(_t("btn_registrar_usuario"), key="sb_btn_reg", type="primary", use_container_width=True):
+                if not p_cad_user or not p_cad_nome or not p_cad_pass1:
+                    st.error(_t("err_required"))
+                elif p_cad_pass1 != p_cad_pass2:
+                    st.error(_t("err_senhas_diferentes"))
+                else:
+                    ok, msg = database.criar_usuario(
+                        p_cad_user, 
+                        p_cad_nome, 
+                        p_cad_email, 
+                        p_cad_pass1, 
+                        is_admin=1 if p_cad_admin else 0
+                    )
+                    if ok:
+                        st.success(_t("success_usuario_criado"))
+                        st.rerun()
+                    else:
+                        st.error(msg)
+
+    with col_u_list:
+        with st.popover(_t("btn_gerenciar_usuarios"), use_container_width=True):
+            st.markdown(f"#### {_t('user_mgmt_title')}")
+            st.caption(_t("user_mgmt_subtitle"))
+            
+            todos_usuarios = database.listar_usuarios()
+            for u in todos_usuarios:
+                eh_proprio = (u["id"] == usuario_atual.get("id"))
+                is_ativo = (u.get("ativo", 1) == 1)
+                
+                status_cor = "#166534" if is_ativo else "#991B1B"
+                status_bg = "#DCFCE7" if is_ativo else "#FEE2E2"
+                status_label = _t("user_status_active") if is_ativo else _t("user_status_inactive")
+                
+                with st.container():
+                    st.markdown(f"""
+                    <div style="padding: 8px; border-radius: 6px; background-color: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 6px;">
+                        <strong>{u['nome']}</strong> <span style="color: #64748b;">(@{u['username']})</span>
+                        <br>
+                        <small>{u.get('email', '') or 'Sem e-mail cadastrado'}</small>
+                        <div style="margin-top: 4px;">
+                            <span style="background-color: {status_bg}; color: {status_cor}; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">
+                                {status_label}
+                            </span>
+                            {' <span style="background-color: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;">⭐ Admin</span>' if u.get('is_admin') else ''}
+                            {' <span style="color: #64748b; font-size: 11px;">(Você)</span>' if eh_proprio else ''}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    c_act1, c_act2 = st.columns(2)
+                    with c_act1:
+                        if eh_proprio:
+                            st.button(_t("btn_deactivate") if is_ativo else _t("btn_activate"), key=f"btn_stat_{u['id']}", disabled=True, help=_t("err_cannot_deactivate_self"), use_container_width=True)
+                        else:
+                            if is_ativo:
+                                if st.button(_t("btn_deactivate"), key=f"btn_inativar_{u['id']}", use_container_width=True):
+                                    database.alternar_status_usuario(u["id"], 0)
+                                    st.success(_t("success_user_status"))
+                                    st.rerun()
+                            else:
+                                if st.button(_t("btn_activate"), key=f"btn_ativar_{u['id']}", use_container_width=True):
+                                    database.alternar_status_usuario(u["id"], 1)
+                                    st.success(_t("success_user_status"))
+                                    st.rerun()
+                    with c_act2:
+                        if eh_proprio:
+                            st.button(_t("btn_delete_user"), key=f"btn_del_{u['id']}", disabled=True, help=_t("err_cannot_delete_self"), use_container_width=True)
+                        else:
+                            btn_del_key = f"confirm_del_u_{u['id']}"
+                            if st.session_state.get(btn_del_key):
+                                st.warning(_t("delete_user_confirm", user=u['username']))
+                                c_yes, c_no = st.columns(2)
+                                with c_yes:
+                                    if st.button("✔️ Sim", key=f"yes_del_{u['id']}", type="primary", use_container_width=True):
+                                        database.excluir_usuario(u["id"])
+                                        st.session_state[btn_del_key] = False
+                                        st.success(_t("success_user_deleted"))
+                                        st.rerun()
+                                with c_no:
+                                    if st.button("✖️ Não", key=f"no_del_{u['id']}", use_container_width=True):
+                                        st.session_state[btn_del_key] = False
+                                        st.rerun()
+                            else:
+                                if st.button(_t("btn_delete_user"), key=f"trigger_del_{u['id']}", use_container_width=True):
+                                    st.session_state[btn_del_key] = True
+                                    st.rerun()
+                    st.markdown("<hr style='margin: 8px 0;'>", unsafe_allow_html=True)
 
     hoje = date.today()
     st.caption(f"{_t('system_date')} **{hoje.strftime('%d/%m/%Y')}**")

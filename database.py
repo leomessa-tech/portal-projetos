@@ -60,9 +60,16 @@ def init_db():
             senha_hash TEXT NOT NULL,
             salt TEXT NOT NULL,
             is_admin INTEGER DEFAULT 0,
+            ativo INTEGER DEFAULT 1,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    # Migração segura para tabelas já existentes
+    cursor.execute("PRAGMA table_info(usuarios)")
+    colunas_existentes_u = [col[1] for col in cursor.fetchall()]
+    if "ativo" not in colunas_existentes_u:
+        cursor.execute("ALTER TABLE usuarios ADD COLUMN ativo INTEGER DEFAULT 1")
     
     # Verificar se existe usuário cadastrado, se não, cria admin inicial
     cursor.execute("SELECT COUNT(*) as total FROM usuarios")
@@ -198,7 +205,7 @@ def salvar_configuracoes_smtp(smtp_data: Dict[str, str]):
 
 # --- Operações de Usuários e Autenticação ---
 
-def criar_usuario(username: str, nome: str, email: str, senha: str, is_admin: int = 0) -> Tuple[bool, str]:
+def criar_usuario(username: str, nome: str, email: str, senha: str, is_admin: int = 0, ativo: int = 1) -> Tuple[bool, str]:
     import auth
     username = username.strip().lower()
     nome = nome.strip()
@@ -214,9 +221,9 @@ def criar_usuario(username: str, nome: str, email: str, senha: str, is_admin: in
     try:
         senha_hash, salt = auth.hash_senha(senha)
         cursor.execute("""
-            INSERT INTO usuarios (username, nome, email, senha_hash, salt, is_admin)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (username, nome, email, senha_hash, salt, is_admin))
+            INSERT INTO usuarios (username, nome, email, senha_hash, salt, is_admin, ativo)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (username, nome, email, senha_hash, salt, is_admin, ativo))
         conn.commit()
         conn.close()
         return True, "Usuário cadastrado com sucesso!"
@@ -244,14 +251,40 @@ def autenticar_usuario(username: str, senha: str) -> Optional[Dict[str, Any]]:
         # Remove hashes antes de retornar
         dados.pop("senha_hash", None)
         dados.pop("salt", None)
+        if dados.get("ativo", 1) == 0:
+            return {"inativo": True, "username": username, "nome": dados.get("nome", "")}
         return dados
     return None
 
 def listar_usuarios() -> List[Dict[str, Any]]:
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, username, nome, email, is_admin, created_at FROM usuarios ORDER BY nome ASC")
+    cursor.execute("SELECT id, username, nome, email, is_admin, ativo, created_at FROM usuarios ORDER BY nome ASC")
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
+
+def alternar_status_usuario(usuario_id: int, ativo: int) -> Tuple[bool, str]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE usuarios SET ativo = ? WHERE id = ?", (ativo, usuario_id))
+        conn.commit()
+        conn.close()
+        return True, "Status do usuário alterado com sucesso."
+    except Exception as e:
+        conn.close()
+        return False, f"Erro ao alterar status: {str(e)}"
+
+def excluir_usuario(usuario_id: int) -> Tuple[bool, str]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM usuarios WHERE id = ?", (usuario_id,))
+        conn.commit()
+        conn.close()
+        return True, "Usuário excluído com sucesso."
+    except Exception as e:
+        conn.close()
+        return False, f"Erro ao excluir usuário: {str(e)}"
 

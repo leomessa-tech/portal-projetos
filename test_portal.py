@@ -2,7 +2,10 @@ import database
 import logic
 import email_service
 
+import seed_data
+
 def test_everything():
+    seed_data.popular_dados_exemplo(forcar=True)
     projs = database.listar_projetos()
     print(f"Total de projetos carregados: {len(projs)}")
     assert len(projs) >= 4, "Deveriam existir pelo menos 4 projetos de exemplo."
@@ -102,7 +105,24 @@ def test_everything():
     ok_dup, _ = database.criar_usuario(test_user, "Outro", "outro@empresa.com", "1234")
     assert not ok_dup, "Deveria bloquear criação de username duplicado."
 
-    print("-> Autenticacao e Usuarios [OK]")
+    # Testar inativação de usuário
+    ok_inativar, _ = database.alternar_status_usuario(user_logado["id"], 0)
+    assert ok_inativar
+    tentativa_inativo = database.autenticar_usuario(test_user, "senha123")
+    assert tentativa_inativo is not None and tentativa_inativo.get("inativo") is True, "Usuário inativo não deveria conseguir logar."
+
+    # Testar reativação de usuário
+    ok_ativar, _ = database.alternar_status_usuario(user_logado["id"], 1)
+    assert ok_ativar
+    tentativa_ativo = database.autenticar_usuario(test_user, "senha123")
+    assert tentativa_ativo is not None and tentativa_ativo.get("inativo") is not True, "Usuário reativado deveria conseguir logar."
+
+    # Testar exclusão de usuário
+    ok_del, _ = database.excluir_usuario(user_logado["id"])
+    assert ok_del
+    assert database.autenticar_usuario(test_user, "senha123") is None, "Usuário excluído não deveria existir."
+
+    print("-> Autenticacao, Inativacao e Gestao de Usuarios [OK]")
 
     # Testar Emissão de Relatórios em Excel e PDF
     import report_generator
