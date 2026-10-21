@@ -554,3 +554,128 @@ def gerar_relatorio_pdf(
     doc.build(story, canvasmaker=canvas_cls)
     buffer.seek(0)
     return buffer.getvalue()
+
+
+# ==============================================================================
+# GERADOR DE PROPOSTA COMERCIAL & TÉCNICA EM PDF
+# ==============================================================================
+
+def gerar_proposta_pdf(prop: Dict[str, Any]) -> bytes:
+    from reportlab.lib.pagesizes import A4
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
+
+    styles = getSampleStyleSheet()
+    
+    style_normal = ParagraphStyle('PropNormal', parent=styles['Normal'], fontName='Helvetica', fontSize=10, leading=14, textColor=colors.HexColor('#1E293B'))
+    style_bold = ParagraphStyle('PropBold', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=10, leading=14, textColor=colors.HexColor('#0F172A'))
+    style_title = ParagraphStyle('PropTitle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=12, leading=16, textColor=colors.HexColor('#1E3A8A'))
+    style_th = ParagraphStyle('PropTH', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=10, leading=13, textColor=colors.white)
+    style_small = ParagraphStyle('PropSmall', parent=styles['Normal'], fontName='Helvetica', fontSize=8.5, leading=12, textColor=colors.HexColor('#475569'))
+    
+    story = []
+
+    ref = prop.get("referencia", "26-001")
+    data_prop = prop.get("data_proposta", "") or logic.formatar_data_extenso_pt()
+    hotel = prop.get("hotel_cliente", "Hotel Cliente")
+    chamado = prop.get("chamado_servicenow", "N/A") or "N/A"
+    contato_ac = prop.get("contato_ac", "Hotel") or "Hotel"
+    descricao = prop.get("descricao_servico", "Instalação e Configuração de Interface")
+    valor = logic.formatar_moeda_br(prop.get("valor_total", 0.0))
+    condicoes = prop.get("condicoes_comerciais", logic.CONDICOES_COMERCIAIS_PADRAO) or logic.CONDICOES_COMERCIAIS_PADRAO
+    
+    razao = prop.get("razao_social", "") or "________________________________________________"
+    cnpj = prop.get("cnpj", "") or "_______________________________________"
+    nome_ass = prop.get("nome_assinatura", "") or "_______________________________________"
+    cargo_ass = prop.get("cargo_assinatura", "") or "_______________________________________"
+    email_cob = prop.get("email_cobranca", "") or "___________________________________________@accor.com"
+
+    # 1. Tabela de Cabeçalho (Ref e Data)
+    header_data = [
+        [
+            Paragraph(f"<b>Ref: {ref}</b>", style_title),
+            Paragraph(f"<b>{data_prop}</b>", ParagraphStyle('PropDate', parent=style_normal, alignment=2, fontName='Helvetica-Bold', textColor=colors.HexColor('#1E3A8A')))
+        ]
+    ]
+    header_table = Table(header_data, colWidths=[260, 263])
+    header_table.setStyle(TableStyle([
+        ('BOX', (0,0), (-1,-1), 1.5, colors.HexColor('#1E3A8A')),
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
+        ('TOPPADDING', (0,0), (-1,-1), 8),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+        ('LEFTPADDING', (0,0), (-1,-1), 10),
+        ('RIGHTPADDING', (0,0), (-1,-1), 10),
+    ]))
+    story.append(header_table)
+    story.append(Spacer(1, 15))
+
+    # 2. Informações do Hotel e Chamado
+    story.append(Paragraph(f"<b>{hotel}</b>", ParagraphStyle('HotelH', parent=style_normal, fontSize=13, fontName='Helvetica-Bold', textColor=colors.HexColor('#0F172A'), spaceAfter=4)))
+    story.append(Paragraph(f"<b>Chamado Service Now:</b> {chamado}", style_normal))
+    story.append(Paragraph(f"<b>A/C:</b> {contato_ac}", style_normal))
+    story.append(Spacer(1, 14))
+
+    # 3. Introdução
+    story.append(Paragraph("Conforme a vossa solicitação, apresentamos nossa proposta comercial e técnica para os seguintes itens:", style_normal))
+    story.append(Spacer(1, 10))
+
+    # 4. Tabela de Itens e Preços
+    items_data = [
+        [Paragraph("<b>Descrição do Serviço</b>", style_th), Paragraph("<b>Total</b>", ParagraphStyle('PropTHRight', parent=style_th, alignment=2))],
+        [Paragraph(descricao, style_normal), Paragraph(f"<b>{valor}</b>", ParagraphStyle('PropValRight', parent=style_normal, alignment=2, fontName='Helvetica-Bold', textColor=colors.HexColor('#1E3A8A')))]
+    ]
+    items_table = Table(items_data, colWidths=[383, 140])
+    items_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1E3A8A')),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('TOPPADDING', (0,0), (-1,-1), 7),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 7),
+        ('LEFTPADDING', (0,0), (-1,-1), 8),
+        ('RIGHTPADDING', (0,0), (-1,-1), 8),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(items_table)
+    story.append(Spacer(1, 16))
+
+    # 5. Condições Comerciais
+    story.append(Paragraph("<b>Condições comerciais:</b>", style_bold))
+    story.append(Spacer(1, 6))
+    for linha in condicoes.splitlines():
+        if linha.strip():
+            story.append(Paragraph(f"• {linha.strip()}", style_small))
+            story.append(Spacer(1, 2))
+    story.append(Spacer(1, 14))
+
+    # 6. Quadro "De acordo"
+    story.append(Paragraph("<b>De acordo:</b>", style_bold))
+    story.append(Spacer(1, 6))
+    
+    de_acordo_data = [
+        [Paragraph(f"<b>Razão Social:</b> {razao}", style_small), Paragraph(f"<b>CNPJ:</b> {cnpj}", style_small)],
+        [Paragraph(f"<b>NOME:</b> {nome_ass}", style_small), Paragraph(f"<b>CARGO:</b> {cargo_ass}", style_small)],
+        [Paragraph(f"<b>Email de cobrança:</b> {email_cob}", style_small), Paragraph("", style_small)],
+        [Paragraph("<b>Assinatura:</b> ____________________________________________", style_small), Paragraph("<b>Data Assinatura:</b> _______/________/________", style_small)]
+    ]
+    de_acordo_table = Table(de_acordo_data, colWidths=[280, 243])
+    de_acordo_table.setStyle(TableStyle([
+        ('BOX', (0,0), (-1,-1), 1, colors.HexColor('#94A3B8')),
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
+        ('TOPPADDING', (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+        ('LEFTPADDING', (0,0), (-1,-1), 8),
+        ('RIGHTPADDING', (0,0), (-1,-1), 8),
+        ('SPAN', (0, 2), (1, 2)), # Email ocupa as duas colunas
+    ]))
+    story.append(de_acordo_table)
+
+    # Compilação
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()

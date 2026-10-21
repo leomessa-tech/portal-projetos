@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime, date, timedelta
 import altair as alt
@@ -467,7 +468,7 @@ with tab_consulta:
     st.subheader(_t("consulta_subtitle"))
     
     # Filtros
-    f1, f2, f3, f4, f5 = st.columns([2, 1, 1, 1, 1])
+    f1, f2, f3, f4, f5, f6 = st.columns([2, 1, 1, 1, 1, 1])
     with f1:
         termo_busca = st.text_input(_t("search_label"), placeholder=_t("search_placeholder"))
     with f2:
@@ -494,6 +495,22 @@ with tab_consulta:
     with f5:
         responsaveis_unicos = ["Todos"] + sorted(list({p["responsavel"] for p in projetos}))
         resp_filtro = st.selectbox(_t("filter_resp"), responsaveis_unicos)
+    with f6:
+        prop_opcoes_raw = ["Todas", "Sem Proposta", "Em Elaboração", "Proposta Enviada", "Proposta Aprovada", "Proposta Recusada"]
+        prop_labels = [
+            _t("status_proposta_todas"),
+            _t("status_proposta_sem"),
+            _t("status_proposta_elaboracao"),
+            _t("status_proposta_enviada"),
+            _t("status_proposta_aprovada"),
+            _t("status_proposta_recusada")
+        ]
+        prop_idx = st.selectbox(
+            _t("filter_status_proposta"),
+            range(len(prop_opcoes_raw)),
+            format_func=lambda i: prop_labels[i]
+        )
+        prop_filtro = prop_opcoes_raw[prop_idx]
 
     # Aplicação dos Filtros
     projetos_filtrados = projetos
@@ -516,6 +533,11 @@ with tab_consulta:
         projetos_filtrados = [p for p in projetos_filtrados if p.get("status_manual") == man_filtro]
     if resp_filtro != "Todos":
         projetos_filtrados = [p for p in projetos_filtrados if p["responsavel"] == resp_filtro]
+    if prop_filtro != "Todas":
+        if prop_filtro == "Sem Proposta":
+            projetos_filtrados = [p for p in projetos_filtrados if not p.get("proposta_id")]
+        else:
+            projetos_filtrados = [p for p in projetos_filtrados if p.get("proposta_status") == prop_filtro]
 
     st.write(_t("showing_projects", current=len(projetos_filtrados), total=len(projetos)))
 
@@ -542,6 +564,24 @@ with tab_consulta:
                     </span>
                     """, unsafe_allow_html=True)
                     
+                    prop_st = p.get("proposta_status")
+                    if prop_st:
+                        cores_prop = {
+                            "Proposta Aprovada": ("#16a34a", "✅"),
+                            "Proposta Recusada": ("#dc2626", "❌"),
+                            "Proposta Enviada": ("#0284c7", "📨"),
+                            "Em Elaboração": ("#d97706", "📝")
+                        }
+                        cor_bg, icone_prop = cores_prop.get(prop_st, ("#64748b", "📄"))
+                        ref_badge = f" (Ref: {p.get('proposta_referencia')})" if p.get('proposta_referencia') else ""
+                        st.markdown(f'''
+                        <div style="margin-top: 5px;">
+                            <span class="badge" style="background-color: {cor_bg}20; color: {cor_bg}; border: 1px solid {cor_bg}80; font-weight: 600;">
+                                {icone_prop} {_t('prop_badge_status', status=prop_st)}{ref_badge}
+                            </span>
+                        </div>
+                        ''', unsafe_allow_html=True)
+
                     st.markdown(f"**{_t('card_resp')}** {p['responsavel']}  \n✉️ [{p['email_responsavel']}](mailto:{p['email_responsavel']})")
                     if p.get("observacoes"):
                         st.info(f"📝 **{_t('card_obs')}** {p['observacoes']}")
@@ -629,6 +669,244 @@ with tab_consulta:
                                 st.success(_t("save_success"))
                                 st.rerun()
 
+                    # Botão / Popover de Proposta Comercial & Técnica
+                    tem_proposta = bool(p.get("proposta_id"))
+                    status_proposta_card = p.get("proposta_status", "Em Elaboração")
+                    label_btn_prop = _t("btn_ver_proposta", status=status_proposta_card) if tem_proposta else _t("btn_criar_proposta")
+                    
+                    with st.popover(label_btn_prop, use_container_width=True):
+                        st.markdown(f"#### {_t('proposta_modal_title')}")
+                        st.caption(_t("proposta_modal_subtitle"))
+                        
+                        prop_data = database.obter_proposta_por_projeto(p["id"])
+                        if not prop_data:
+                            prop_ref = database.proxima_referencia_proposta()
+                            prop_data_hoje = logic.formatar_data_extenso_pt()
+                            prop_hotel = p["nome"]
+                            prop_chamado = "N/A"
+                            prop_contato = "Hotel"
+                            prop_desc = p.get("observacoes") or f"Instalação e Configuração de Interface - {p['nome']}"
+                            prop_valor = 0.0
+                            prop_cond = logic.CONDICOES_COMERCIAIS_PADRAO
+                            prop_dest = p.get("email_responsavel") or ""
+                            prop_razao = ""
+                            prop_cnpj = ""
+                            prop_nome_ass = ""
+                            prop_cargo_ass = ""
+                            prop_email_cob = "cobranca@accor.com"
+                            prop_status = "Em Elaboração"
+                            prop_envio = None
+                            prop_id_atual = None
+                        else:
+                            prop_id_atual = prop_data.get("id")
+                            prop_ref = prop_data.get("referencia", "")
+                            prop_data_hoje = prop_data.get("data_proposta", "")
+                            prop_hotel = prop_data.get("hotel_cliente", "")
+                            prop_chamado = prop_data.get("chamado_servicenow", "N/A")
+                            prop_contato = prop_data.get("contato_ac", "Hotel")
+                            prop_desc = prop_data.get("descricao_servico", "")
+                            prop_valor = float(prop_data.get("valor_total", 0.0))
+                            prop_cond = prop_data.get("condicoes_comerciais", logic.CONDICOES_COMERCIAIS_PADRAO)
+                            prop_dest = prop_data.get("email_destinatario", "")
+                            prop_razao = prop_data.get("razao_social", "")
+                            prop_cnpj = prop_data.get("cnpj", "")
+                            prop_nome_ass = prop_data.get("nome_assinatura", "")
+                            prop_cargo_ass = prop_data.get("cargo_assinatura", "")
+                            prop_email_cob = prop_data.get("email_cobranca", "")
+                            prop_status = prop_data.get("status", "Em Elaboração")
+                            prop_envio = prop_data.get("data_envio")
+
+                        # Indicador Visual de Status Atual da Proposta
+                        cores_status = {
+                            "Proposta Aprovada": ("#16a34a", "✅"),
+                            "Proposta Recusada": ("#dc2626", "❌"),
+                            "Proposta Enviada": ("#0284c7", "📨"),
+                            "Em Elaboração": ("#d97706", "📝")
+                        }
+                        cor_st, icone_st = cores_status.get(prop_status, ("#64748b", "📄"))
+                        envio_info = f" &bull; <em>Enviado via SMTP em: {prop_envio}</em>" if prop_envio else ""
+                        st.markdown(f'''
+                        <div style="padding: 8px 12px; background: {cor_st}18; border: 1px solid {cor_st}60; border-radius: 8px; margin-bottom: 12px;">
+                            <strong>Status da Proposta:</strong> {icone_st} <span style="color: {cor_st}; font-weight: bold; font-size: 1.05em;">{prop_status}</span>{envio_info}
+                        </div>
+                        ''', unsafe_allow_html=True)
+                        
+                        cp1, cp2 = st.columns(2)
+                        with cp1:
+                            input_ref = st.text_input(_t("prop_field_ref"), value=prop_ref, key=f"pref_{p['id']}")
+                        with cp2:
+                            input_data = st.text_input(_t("prop_field_data"), value=prop_data_hoje, key=f"pdata_{p['id']}")
+                            
+                        cp3, cp4 = st.columns([2, 1])
+                        with cp3:
+                            input_hotel = st.text_input(_t("prop_field_hotel"), value=prop_hotel, key=f"photel_{p['id']}")
+                        with cp4:
+                            input_contato = st.text_input(_t("prop_field_contato_ac"), value=prop_contato, key=f"pac_{p['id']}")
+                            
+                        cp5, cp6 = st.columns([2, 1])
+                        with cp5:
+                            input_chamado = st.text_input(_t("prop_field_chamado"), value=prop_chamado, key=f"pcham_{p['id']}")
+                        with cp6:
+                            input_valor = st.number_input(_t("prop_field_valor"), min_value=0.0, value=float(prop_valor), step=50.0, format="%.2f", key=f"pval_{p['id']}")
+                            
+                        input_desc = st.text_area(_t("prop_field_desc"), value=prop_desc, height=80, key=f"pdesc_{p['id']}")
+                        input_cond = st.text_area(_t("prop_field_condicoes"), value=prop_cond, height=110, key=f"pcond_{p['id']}")
+                        input_dest = st.text_input(_t("prop_field_email_dest"), value=prop_dest, key=f"pdest_{p['id']}", placeholder="exemplo@accor.com")
+                        
+                        st.markdown(f"**{_t('prop_sec_de_acordo')}**")
+                        cda1, cda2 = st.columns(2)
+                        with cda1:
+                            input_razao = st.text_input(_t("prop_field_razao"), value=prop_razao, key=f"prazao_{p['id']}")
+                            input_nome_ass = st.text_input(_t("prop_field_nome_ass"), value=prop_nome_ass, key=f"pnome_{p['id']}")
+                        with cda2:
+                            input_cnpj = st.text_input(_t("prop_field_cnpj"), value=prop_cnpj, key=f"pcnpj_{p['id']}")
+                            input_cargo_ass = st.text_input(_t("prop_field_cargo_ass"), value=prop_cargo_ass, key=f"pcargo_{p['id']}")
+                        input_email_cob = st.text_input(_t("prop_field_email_cob"), value=prop_email_cob, key=f"pcob_{p['id']}")
+
+                        # Objeto da proposta atual para ações
+                        prop_obj_atual = {
+                            "id": prop_id_atual,
+                            "projeto_id": p["id"],
+                            "referencia": input_ref,
+                            "data_proposta": input_data,
+                            "hotel_cliente": input_hotel,
+                            "chamado_servicenow": input_chamado,
+                            "contato_ac": input_contato,
+                            "descricao_servico": input_desc,
+                            "valor_total": input_valor,
+                            "condicoes_comerciais": input_cond,
+                            "email_destinatario": input_dest,
+                            "razao_social": input_razao,
+                            "cnpj": input_cnpj,
+                            "nome_assinatura": input_nome_ass,
+                            "cargo_assinatura": input_cargo_ass,
+                            "email_cobranca": input_email_cob,
+                            "status": prop_status,
+                            "data_envio": prop_envio
+                        }
+
+                        # Botão Salvar Proposta
+                        if st.button(_t("btn_salvar_proposta"), key=f"btn_save_prop_{p['id']}", type="primary", use_container_width=True):
+                            database.salvar_proposta(
+                                projeto_id=p["id"],
+                                referencia=input_ref,
+                                data_proposta=input_data,
+                                hotel_cliente=input_hotel,
+                                chamado_servicenow=input_chamado,
+                                contato_ac=input_contato,
+                                descricao_servico=input_desc,
+                                valor_total=input_valor,
+                                condicoes_comerciais=input_cond,
+                                email_destinatario=input_dest,
+                                razao_social=input_razao,
+                                cnpj=input_cnpj,
+                                nome_assinatura=input_nome_ass,
+                                cargo_assinatura=input_cargo_ass,
+                                email_cobranca=input_email_cob,
+                                status=prop_status
+                            )
+                            st.success(_t("success_proposta_salva"))
+                            st.rerun()
+
+                        # Disparo SMTP da Proposta e Download PDF
+                        c_smtp, c_pdf = st.columns(2)
+                        with c_smtp:
+                            if st.button(_t("btn_enviar_proposta_smtp"), key=f"btn_smtp_prop_{p['id']}", use_container_width=True):
+                                novo_id = database.salvar_proposta(
+                                    projeto_id=p["id"],
+                                    referencia=input_ref,
+                                    data_proposta=input_data,
+                                    hotel_cliente=input_hotel,
+                                    chamado_servicenow=input_chamado,
+                                    contato_ac=input_contato,
+                                    descricao_servico=input_desc,
+                                    valor_total=input_valor,
+                                    condicoes_comerciais=input_cond,
+                                    email_destinatario=input_dest,
+                                    razao_social=input_razao,
+                                    cnpj=input_cnpj,
+                                    nome_assinatura=input_nome_ass,
+                                    cargo_assinatura=input_cargo_ass,
+                                    email_cobranca=input_email_cob,
+                                    status=prop_status
+                                )
+                                prop_obj_atual["id"] = novo_id
+                                sucesso_envio, msg_envio = email_service.enviar_email_proposta(prop_obj_atual, lang=cur_lang)
+                                if sucesso_envio:
+                                    st.success(msg_envio)
+                                    st.rerun()
+                                else:
+                                    st.error(msg_envio)
+
+                        with c_pdf:
+                            pdf_prop_bytes = report_generator.gerar_proposta_pdf(prop_obj_atual)
+                            nome_pdf_prop = f"Proposta_{input_ref.replace('/', '_').replace(' ', '_')}.pdf"
+                            st.download_button(
+                                label=_t("btn_baixar_proposta_pdf"),
+                                data=pdf_prop_bytes,
+                                file_name=nome_pdf_prop,
+                                mime="application/pdf",
+                                key=f"down_pdf_prop_{p['id']}",
+                                use_container_width=True
+                            )
+
+                        # Botões de Transição Rápida de Status (Aprovar / Recusar)
+                        st.markdown("<hr style='margin: 10px 0;'>", unsafe_allow_html=True)
+                        c_apr, c_rec = st.columns(2)
+                        with c_apr:
+                            if prop_status != "Proposta Aprovada":
+                                if st.button(_t("btn_aprovar_proposta"), key=f"btn_apr_prop_{p['id']}", use_container_width=True):
+                                    novo_id = database.salvar_proposta(
+                                        projeto_id=p["id"],
+                                        referencia=input_ref,
+                                        data_proposta=input_data,
+                                        hotel_cliente=input_hotel,
+                                        chamado_servicenow=input_chamado,
+                                        contato_ac=input_contato,
+                                        descricao_servico=input_desc,
+                                        valor_total=input_valor,
+                                        condicoes_comerciais=input_cond,
+                                        email_destinatario=input_dest,
+                                        razao_social=input_razao,
+                                        cnpj=input_cnpj,
+                                        nome_assinatura=input_nome_ass,
+                                        cargo_assinatura=input_cargo_ass,
+                                        email_cobranca=input_email_cob,
+                                        status="Proposta Aprovada"
+                                    )
+                                    database.atualizar_status_proposta(novo_id, "Proposta Aprovada")
+                                    st.success(_t("success_proposta_status", status="Proposta Aprovada"))
+                                    st.rerun()
+                        with c_rec:
+                            if prop_status != "Proposta Recusada":
+                                if st.button(_t("btn_recusar_proposta"), key=f"btn_rec_prop_{p['id']}", use_container_width=True):
+                                    novo_id = database.salvar_proposta(
+                                        projeto_id=p["id"],
+                                        referencia=input_ref,
+                                        data_proposta=input_data,
+                                        hotel_cliente=input_hotel,
+                                        chamado_servicenow=input_chamado,
+                                        contato_ac=input_contato,
+                                        descricao_servico=input_desc,
+                                        valor_total=input_valor,
+                                        condicoes_comerciais=input_cond,
+                                        email_destinatario=input_dest,
+                                        razao_social=input_razao,
+                                        cnpj=input_cnpj,
+                                        nome_assinatura=input_nome_ass,
+                                        cargo_assinatura=input_cargo_ass,
+                                        email_cobranca=input_email_cob,
+                                        status="Proposta Recusada"
+                                    )
+                                    database.atualizar_status_proposta(novo_id, "Proposta Recusada")
+                                    st.success(_t("success_proposta_status", status="Proposta Recusada"))
+                                    st.rerun()
+
+                        # Prévia formatada da Proposta
+                        with st.expander(_t("preview_proposta_title"), expanded=False):
+                            _, _, html_prev = logic.gerar_conteudo_email_proposta(prop_obj_atual, lang=cur_lang)
+                            components.html(html_prev, height=450, scrolling=True)
+
                     # Botão Excluir
                     with st.popover(_t("btn_delete"), use_container_width=True):
                         st.write(_t("delete_confirm"))
@@ -648,6 +926,7 @@ with tab_consulta:
             _t("filter_priority").replace(":", ""): prio_filtro if prio_filtro != "Todas" else None,
             _t("filter_manual").replace(":", ""): man_filtro if man_filtro != "Todos" else None,
             _t("filter_resp").replace(":", ""): resp_filtro if resp_filtro != "Todos" else None,
+            _t("filter_status_proposta").replace(":", ""): prop_filtro if prop_filtro != "Todas" else None,
             _t("search_label").replace("🔍 ", "").replace(":", ""): termo_busca if termo_busca else None
         }
         filtros_ativos = {k: v for k, v in filtros_ativos.items() if v}

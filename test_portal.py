@@ -136,6 +136,77 @@ def test_everything():
         assert len(pdf_out) > 1000, f"PDF gerado muito pequeno para {l}: {len(pdf_out)} bytes"
         print(f"-> Relatórios Excel & PDF [{l}] OK (Excel: {len(excel_out)} B, PDF: {len(pdf_out)} B)")
 
+        # Testar Propostas Comerciais & Técnicas
+    proj_prop = projs[0]
+    ref_gerada = database.proxima_referencia_proposta()
+    assert len(ref_gerada) >= 5, f"Referência inválida: {ref_gerada}"
+    
+    prop_id = database.salvar_proposta(
+        projeto_id=proj_prop["id"],
+        referencia=ref_gerada,
+        data_proposta="21 de Outubro de 2026",
+        hotel_cliente="7859 - Ibis Budget Campo Grande",
+        chamado_servicenow="INC123456",
+        contato_ac="Hotel",
+        descricao_servico="Instalação de interface e configuração de rede",
+        valor_total=938.00,
+        condicoes_comerciais=logic.CONDICOES_COMERCIAIS_PADRAO,
+        email_destinatario="propostas@accor.com",
+        razao_social="Accor Brasil Hotéis Ltda",
+        cnpj="12.345.678/0001-90",
+        nome_assinatura="Gerente Geral",
+        cargo_assinatura="Gerente de TI",
+        email_cobranca="cobranca@accor.com",
+        status="Em Elaboração"
+    )
+    assert prop_id > 0, "ID da proposta deveria ser maior que 0"
+    
+    prop_carregada = database.obter_proposta_por_projeto(proj_prop["id"])
+    assert prop_carregada is not None
+    assert prop_carregada["referencia"] == ref_gerada
+    assert prop_carregada["valor_total"] == 938.00
+    assert prop_carregada["status"] == "Em Elaboração"
+    
+    # Testar formatação de email da proposta
+    for l in ["pt_BR", "en_US", "es_ES", "fr_FR"]:
+        p_assunto, p_txt, p_html = logic.gerar_conteudo_email_proposta(prop_carregada, lang=l)
+        assert ref_gerada in p_assunto
+        assert "7859 - Ibis Budget Campo Grande" in p_txt
+        assert "R$ 938,00" in p_html
+        assert "Accor Brasil" in p_html
+        
+    # Testar geração de PDF da proposta
+    pdf_prop_bytes = report_generator.gerar_proposta_pdf(prop_carregada)
+    assert len(pdf_prop_bytes) > 1000, f"PDF da proposta muito pequeno: {len(pdf_prop_bytes)} bytes"
+    
+    # Testar transição de status da proposta
+    database.atualizar_status_proposta(prop_id, "Proposta Enviada", data_envio="21/10/2026 às 10:00")
+    prop_enviada = database.obter_proposta_por_projeto(proj_prop["id"])
+    assert prop_enviada["status"] == "Proposta Enviada"
+    assert prop_enviada["data_envio"] == "21/10/2026 às 10:00"
+    
+    database.atualizar_status_proposta(prop_id, "Proposta Aprovada")
+    prop_aprovada = database.obter_proposta_por_projeto(proj_prop["id"])
+    assert prop_aprovada["status"] == "Proposta Aprovada"
+    
+    database.atualizar_status_proposta(prop_id, "Proposta Recusada")
+    prop_recusada = database.obter_proposta_por_projeto(proj_prop["id"])
+    assert prop_recusada["status"] == "Proposta Recusada"
+    
+    # Testar se listar_projetos inclui dados da proposta associada
+    projs_com_prop = database.listar_projetos()
+    proj_com_prop_item = next((p for p in projs_com_prop if p["id"] == proj_prop["id"]), None)
+    assert proj_com_prop_item is not None
+    assert proj_com_prop_item["proposta_id"] == prop_id
+    assert proj_com_prop_item["proposta_status"] == "Proposta Recusada"
+    assert proj_com_prop_item["proposta_referencia"] == ref_gerada
+    assert proj_com_prop_item["proposta_valor"] == 938.00
+    
+    # Limpeza da proposta de teste
+    database.excluir_proposta(prop_id)
+    assert database.obter_proposta_por_projeto(proj_prop["id"]) is None
+    print("-> Gestão de Propostas Comerciais, SMTP, PDF & Status [OK]")
+
     print("\n[SUCESSO] Todos os testes automatizados passaram com sucesso!")
 
 if __name__ == "__main__":

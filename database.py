@@ -71,6 +71,32 @@ def init_db():
     if "ativo" not in colunas_existentes_u:
         cursor.execute("ALTER TABLE usuarios ADD COLUMN ativo INTEGER DEFAULT 1")
     
+    # Tabela de Propostas Comerciais e Técnicas
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS propostas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            projeto_id INTEGER NOT NULL,
+            referencia TEXT NOT NULL,
+            data_proposta TEXT NOT NULL,
+            hotel_cliente TEXT NOT NULL,
+            chamado_servicenow TEXT DEFAULT 'N/A',
+            contato_ac TEXT DEFAULT 'Hotel',
+            descricao_servico TEXT NOT NULL,
+            valor_total REAL NOT NULL DEFAULT 0.0,
+            condicoes_comerciais TEXT,
+            email_destinatario TEXT,
+            razao_social TEXT,
+            cnpj TEXT,
+            nome_assinatura TEXT,
+            cargo_assinatura TEXT,
+            email_cobranca TEXT,
+            status TEXT DEFAULT 'Em Elaboração',
+            data_envio TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (projeto_id) REFERENCES projetos(id) ON DELETE CASCADE
+        )
+    """)
+    
     # Verificar se existe usuário cadastrado, se não, cria admin inicial
     cursor.execute("SELECT COUNT(*) as total FROM usuarios")
     total_users = cursor.fetchone()["total"]
@@ -90,7 +116,19 @@ def init_db():
 def listar_projetos() -> List[Dict[str, Any]]:
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM projetos ORDER BY data_termino ASC, id DESC")
+    cursor.execute("""
+        SELECT p.*,
+               pr.id AS proposta_id,
+               pr.status AS proposta_status,
+               pr.referencia AS proposta_referencia,
+               pr.valor_total AS proposta_valor,
+               pr.data_envio AS proposta_data_envio
+        FROM projetos p
+        LEFT JOIN propostas pr ON pr.id = (
+            SELECT id FROM propostas WHERE projeto_id = p.id ORDER BY id DESC LIMIT 1
+        )
+        ORDER BY p.data_termino ASC, p.id DESC
+    """)
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]
@@ -287,4 +325,114 @@ def excluir_usuario(usuario_id: int) -> Tuple[bool, str]:
     except Exception as e:
         conn.close()
         return False, f"Erro ao excluir usuário: {str(e)}"
+
+# --- Operações de Propostas Comerciais & Técnicas ---
+
+def obter_proposta_por_projeto(projeto_id: int) -> Optional[Dict[str, Any]]:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT * FROM propostas 
+        WHERE projeto_id = ? 
+        ORDER BY id DESC LIMIT 1
+    """, (projeto_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def proxima_referencia_proposta() -> str:
+    """Gera o próximo sequencial de referência no padrão 26-XXX (ano-sequencial)."""
+    ano_abrev = datetime.now().strftime("%y")
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) as total FROM propostas")
+    row = cursor.fetchone()
+    total = (row["total"] if row else 0) + 1
+    conn.close()
+    return f"{ano_abrev}-{total:03d}"
+
+def salvar_proposta(
+    projeto_id: int,
+    referencia: str,
+    data_proposta: str,
+    hotel_cliente: str,
+    chamado_servicenow: str,
+    contato_ac: str,
+    descricao_servico: str,
+    valor_total: float,
+    condicoes_comerciais: str,
+    email_destinatario: str,
+    razao_social: str = "",
+    cnpj: str = "",
+    nome_assinatura: str = "",
+    cargo_assinatura: str = "",
+    email_cobranca: str = "",
+    status: str = "Em Elaboração"
+) -> int:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM propostas WHERE projeto_id = ? ORDER BY id DESC LIMIT 1", (projeto_id,))
+    existente = cursor.fetchone()
+    
+    if existente:
+        prop_id = existente["id"]
+        cursor.execute("""
+            UPDATE propostas
+            SET referencia = ?, data_proposta = ?, hotel_cliente = ?, chamado_servicenow = ?,
+                contato_ac = ?, descricao_servico = ?, valor_total = ?, condicoes_comerciais = ?,
+                email_destinatario = ?, razao_social = ?, cnpj = ?, nome_assinatura = ?,
+                cargo_assinatura = ?, email_cobranca = ?, status = ?
+            WHERE id = ?
+        """, (
+            referencia.strip(), data_proposta.strip(), hotel_cliente.strip(), chamado_servicenow.strip(),
+            contato_ac.strip(), descricao_servico.strip(), float(valor_total), condicoes_comerciais.strip(),
+            email_destinatario.strip(), razao_social.strip(), cnpj.strip(), nome_assinatura.strip(),
+            cargo_assinatura.strip(), email_cobranca.strip(), status.strip(), prop_id
+        ))
+    else:
+        cursor.execute("""
+            INSERT INTO propostas (
+                projeto_id, referencia, data_proposta, hotel_cliente, chamado_servicenow,
+                contato_ac, descricao_servico, valor_total, condicoes_comerciais,
+                email_destinatario, razao_social, cnpj, nome_assinatura,
+                cargo_assinatura, email_cobranca, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            projeto_id, referencia.strip(), data_proposta.strip(), hotel_cliente.strip(), chamado_servicenow.strip(),
+            contato_ac.strip(), descricao_servico.strip(), float(valor_total), condicoes_comerciais.strip(),
+            email_destinatario.strip(), razao_social.strip(), cnpj.strip(), nome_assinatura.strip(),
+            cargo_assinatura.strip(), email_cobranca.strip(), status.strip()
+        ))
+        prop_id = cursor.lastrowid
+        
+    conn.commit()
+    conn.close()
+    return prop_id
+
+def atualizar_status_proposta(proposta_id: int, novo_status: str, data_envio: str = None) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        if data_envio:
+            cursor.execute("UPDATE propostas SET status = ?, data_envio = ? WHERE id = ?", (novo_status, data_envio, proposta_id))
+        else:
+            cursor.execute("UPDATE propostas SET status = ? WHERE id = ?", (novo_status, proposta_id))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception:
+        conn.close()
+        return False
+
+def excluir_proposta(proposta_id: int) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM propostas WHERE id = ?", (proposta_id,))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception:
+        conn.close()
+        return False
 

@@ -247,3 +247,190 @@ def gerar_conteudo_email_alerta(proj: Dict[str, Any], metricas: Dict[str, Any], 
     """
     return assunto, corpo_texto, corpo_html
 
+# ==============================================================================
+# MODELO E GERAÇÃO DE PROPOSTA COMERCIAL & TÉCNICA
+# ==============================================================================
+
+CONDICOES_COMERCIAIS_PADRAO = """Validade da proposta: 15 dias;
+Já incluso impostos;
+Prazo de execução conforme cronograma acordado entre as partes;
+Pagamento: 10 dias após a execução;
+Garantia de 30 dias após a execução;
+Qualquer solicitação de alteração nos serviços descritos acima, serão tratados através de uma nova proposta;"""
+
+MESES_PT = [
+    "", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+]
+
+def formatar_data_extenso_pt(d: date = None) -> str:
+    if d is None:
+        d = date.today()
+    elif isinstance(d, str):
+        try:
+            d = parse_data(d)
+        except Exception:
+            return d
+    return f"{d.day} de {MESES_PT[d.month]} de {d.year}"
+
+def formatar_moeda_br(valor: float) -> str:
+    try:
+        val_f = float(valor)
+        val_str = f"{val_f:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        return f"R$ {val_str}"
+    except Exception:
+        return f"R$ {valor}"
+
+def gerar_conteudo_email_proposta(prop: Dict[str, Any], lang: str = "pt_BR") -> Tuple[str, str, str]:
+    ref = prop.get("referencia", "26-001")
+    data_prop = prop.get("data_proposta", "") or formatar_data_extenso_pt()
+    hotel = prop.get("hotel_cliente", "Hotel Cliente")
+    chamado = prop.get("chamado_servicenow", "N/A") or "N/A"
+    contato_ac = prop.get("contato_ac", "Hotel") or "Hotel"
+    descricao = prop.get("descricao_servico", "Serviço Técnico Especializado")
+    valor = formatar_moeda_br(prop.get("valor_total", 0.0))
+    condicoes = prop.get("condicoes_comerciais", CONDICOES_COMERCIAIS_PADRAO) or CONDICOES_COMERCIAIS_PADRAO
+    
+    razao = prop.get("razao_social", "") or "__________________________"
+    cnpj = prop.get("cnpj", "") or "_________________________________"
+    nome_ass = prop.get("nome_assinatura", "") or "_______________________________"
+    cargo_ass = prop.get("cargo_assinatura", "") or "_______________________________"
+    email_cob = prop.get("email_cobranca", "") or "________________________________________________@accor.com"
+
+    assunto = f"📄 Proposta Comercial e Técnica - Ref: {ref} - {hotel}"
+
+    # Versão em texto puro
+    condicoes_txt = "\n".join([f"- {linha.strip()}" for linha in condicoes.splitlines() if linha.strip()])
+    corpo_texto = f"""
+================================================================================
+PROPOSTA COMERCIAL E TÉCNICA
+Ref: {ref} | Data: {data_prop}
+================================================================================
+
+{hotel}
+Chamado Service Now: {chamado}
+A/C: {contato_ac}
+
+Conforme a vossa solicitação, apresentamos nossa proposta comercial e técnica para os seguintes itens:
+
+--------------------------------------------------------------------------------
+Descrição do Serviço                                    | Total
+--------------------------------------------------------------------------------
+{descricao:<55} | {valor}
+--------------------------------------------------------------------------------
+
+Condições comerciais:
+{condicoes_txt}
+
+--------------------------------------------------------------------------------
+De acordo:
+Razão Social: {razao}
+CNPJ: {cnpj}
+NOME: {nome_ass}    CARGO: {cargo_ass}
+Email de cobrança: {email_cob}
+Assinatura: ________________________________________
+Data Assinatura: _______/________/________
+================================================================================
+    """
+
+    # Versão em HTML elegante e corporativo
+    condicoes_html = "".join([f"<li style='margin-bottom: 4px;'>{linha.strip()}</li>" for linha in condicoes.splitlines() if linha.strip()])
+    
+    corpo_html = f"""<!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <style>
+            body {{ font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; color: #1e293b; margin: 0; padding: 20px; }}
+            .container {{ max-width: 750px; margin: 0 auto; background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }}
+            .header-table {{ width: 100%; border-collapse: collapse; margin-bottom: 25px; border: 1px solid #1e3a8a; }}
+            .header-table td {{ padding: 10px 14px; font-size: 14px; font-weight: bold; background-color: #f8fafc; color: #1e3a8a; }}
+            .hotel-info {{ margin-bottom: 20px; line-height: 1.6; font-size: 14px; }}
+            .hotel-name {{ font-size: 18px; font-weight: bold; color: #0f172a; margin-bottom: 4px; }}
+            .intro-text {{ margin-bottom: 18px; font-size: 14px; color: #334155; }}
+            .items-table {{ width: 100%; border-collapse: collapse; margin-bottom: 25px; }}
+            .items-table th {{ background-color: #1e3a8a; color: #ffffff; text-align: left; padding: 10px 14px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }}
+            .items-table td {{ border: 1px solid #cbd5e1; padding: 12px 14px; font-size: 14px; }}
+            .items-table td.total {{ text-align: right; font-weight: bold; color: #1e3a8a; white-space: nowrap; width: 140px; font-size: 15px; }}
+            .section-title {{ font-weight: bold; font-size: 14px; color: #0f172a; margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; }}
+            .conditions-list {{ padding-left: 20px; font-size: 13px; color: #475569; line-height: 1.6; margin-bottom: 25px; }}
+            .acceptance-box {{ border: 2px solid #94a3b8; border-radius: 4px; padding: 16px; background-color: #f8fafc; margin-top: 15px; font-size: 13px; line-height: 1.8; }}
+            .footer-note {{ margin-top: 25px; font-size: 11px; color: #64748b; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 12px; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <!-- Tabela de Cabeçalho / Referência -->
+            <table class="header-table">
+                <tr>
+                    <td style="text-align: left; border-right: 1px solid #cbd5e1;">Ref: <strong>{ref}</strong></td>
+                    <td style="text-align: right;">{data_prop}</td>
+                </tr>
+            </table>
+
+            <!-- Identificação do Cliente / Hotel -->
+            <div class="hotel-info">
+                <div class="hotel-name">{hotel}</div>
+                <div><strong>Chamado Service Now:</strong> {chamado}</div>
+                <div><strong>A/C:</strong> {contato_ac}</div>
+            </div>
+
+            <!-- Introdução -->
+            <div class="intro-text">
+                Conforme a vossa solicitação, apresentamos nossa proposta comercial e técnica para os seguintes itens:
+            </div>
+
+            <!-- Tabela de Itens e Preços -->
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Descrição do Serviço</th>
+                        <th style="text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>{descricao}</strong></td>
+                        <td class="total">{valor}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Condições Comerciais -->
+            <div class="section-title">Condições Comerciais:</div>
+            <ul class="conditions-list">
+                {condicoes_html}
+            </ul>
+
+            <!-- Quadro de "De acordo" -->
+            <div class="section-title">De acordo:</div>
+            <div class="acceptance-box">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="width: 50%; padding-bottom: 8px;"><strong>Razão Social:</strong> {razao}</td>
+                        <td style="width: 50%; padding-bottom: 8px;"><strong>CNPJ:</strong> {cnpj}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-bottom: 8px;"><strong>NOME:</strong> {nome_ass}</td>
+                        <td style="padding-bottom: 8px;"><strong>CARGO:</strong> {cargo_ass}</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="padding-bottom: 12px;"><strong>Email de cobrança:</strong> {email_cob}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding-top: 10px;"><strong>Assinatura:</strong> ________________________________________</td>
+                        <td style="padding-top: 10px;"><strong>Data Assinatura:</strong> _______/________/________</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="footer-note">
+                Proposta gerada e enviada através do Portal de Gestão de Projetos.
+            </div>
+        </div>
+    </body>
+    </html>"""
+
+    return assunto, corpo_texto, corpo_html
+
+
