@@ -35,6 +35,9 @@ git remote remove origin 2>$null
 git remote add origin $repoUrl
 
 Write-Host ""
+Write-Host "Sincronizando alteracoes remotas..." -ForegroundColor Cyan
+git pull --rebase origin main 2>$null
+
 Write-Host "Enviando arquivos para o GitHub (git push -u origin main)..." -ForegroundColor Cyan
 git push -u origin main
 

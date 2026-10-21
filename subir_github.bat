@@ -77,6 +77,9 @@ echo [4/4] Enviando arquivos para o GitHub (git push -u origin main)...
 echo OBS: Se uma janela do navegador abrir pedindo login no GitHub, basta autorizar.
 echo.
 
+:: Sincronizar alteracoes remotas caso existam
+git pull --rebase origin main >nul 2>&1
+
 git push -u origin main
 
 if %errorlevel% equ 0 goto SUCESSO
