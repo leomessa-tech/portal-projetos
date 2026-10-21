@@ -309,7 +309,7 @@ Ref: {ref} | Data: {data_prop}
 
 {hotel}
 Chamado Service Now: {chamado}
-A/C: {contato_ac}
+Contato: {contato_ac}
 
 Conforme a vossa solicitação, apresentamos nossa proposta comercial e técnica para os seguintes itens:
 
@@ -372,7 +372,7 @@ Data Assinatura: _______/________/________
             <div class="hotel-info">
                 <div class="hotel-name">{hotel}</div>
                 <div><strong>Chamado Service Now:</strong> {chamado}</div>
-                <div><strong>A/C:</strong> {contato_ac}</div>
+                <div><strong>Contato:</strong> {contato_ac}</div>
             </div>
 
             <!-- Introdução -->

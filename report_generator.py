@@ -619,7 +619,7 @@ def gerar_proposta_pdf(prop: Dict[str, Any]) -> bytes:
     # 2. Informações do Hotel e Chamado
     story.append(Paragraph(f"<b>{hotel}</b>", ParagraphStyle('HotelH', parent=style_normal, fontSize=13, fontName='Helvetica-Bold', textColor=colors.HexColor('#0F172A'), spaceAfter=4)))
     story.append(Paragraph(f"<b>Chamado Service Now:</b> {chamado}", style_normal))
-    story.append(Paragraph(f"<b>A/C:</b> {contato_ac}", style_normal))
+    story.append(Paragraph(f"<b>Contato:</b> {contato_ac}", style_normal))
     story.append(Spacer(1, 14))
 
     # 3. Introdução
